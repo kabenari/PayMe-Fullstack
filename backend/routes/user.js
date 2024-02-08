@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../config.js");
 const { User } = require("../db.js")
 const { auth } = require("../middlewares/middleware.js")
+const { Account } = require("../db.js")
 
 const signupBody = zod.object({
     username: zod.string().email(),
@@ -40,32 +41,28 @@ router.post("/signup", async(req,res)=>{
 
     const userId = user._id;
 
+    await Account.create({
+        userId,
+        balance: 1+Math.random()*1000
+    })
+
     const token = jwt.sign({
         userId
     },JWT_SECRET)
-
-
-    res.json({
-        message: "User created successfully",
-        token: token
-    })
-
-    res.send("hi")
-    console.log("Hi");
 })
 
 const signInBody = zod.object({
     username: zod.string().email(),
-	firstName: zod.string(),
+	password: zod.string(),
 })
 
 router.post("/signin", async(req,res)=>{
-    const { success } = signInBody.safeParse(req.body)
-    if (!success) {
-        return res.status(411).json({
-            message: "Incorrect inputs"
-        })
-    }   
+    // const { success } = signInBody.safeParse(req.body)
+    // if (!success) {
+    //     return res.status(411).json({
+    //         message: "Incorrect inputs"
+    //     })
+    // }   
 
     const user = await User.findOne({
         username: req.body.username,
@@ -114,6 +111,32 @@ router.put("/update", async(req,res)=>{
     })
 });
 
+
+router.get("/bulk",async(req,res)=>{
+    const filter = req.query.filter || " ";
+
+    const users = await User.find({
+        $or:[{
+            firstName:{
+                "$regex":filter
+            }
+        },{
+            lastName:{
+                "$regex":filter
+            }
+        }]
+    })
+
+    res.json({
+        user: users.map(user => ({
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            _id: user._id
+        }))
+    })
+
+})
 
 
 
